@@ -15,6 +15,11 @@ def _fan_out(state: GraphState) -> list[str]:
     return ["market", "competition", "bad_reviews"]
 
 
+def _fan_out_llm(state: GraphState) -> list[str]:
+    """After data nodes converge, fan out insights and directions in parallel."""
+    return ["insights", "directions"]
+
+
 def build_graph():
     g = StateGraph(GraphState)
     g.add_node("crawl", crawl_node)
@@ -34,13 +39,13 @@ def build_graph():
     # market → pricing (pricing needs market median price)
     g.add_edge("market", "pricing")
 
-    # All parallel branches converge to insights
-    g.add_edge("pricing", "insights")
-    g.add_edge("competition", "insights")
-    g.add_edge("bad_reviews", "insights")
+    # All parallel branches converge, then fan out to insights + directions in parallel
+    g.add_conditional_edges("pricing", _fan_out_llm)
+    g.add_conditional_edges("competition", _fan_out_llm)
+    g.add_conditional_edges("bad_reviews", _fan_out_llm)
 
-    # insights → directions → report → END
-    g.add_edge("insights", "directions")
+    # insights + directions converge to report → END
+    g.add_edge("insights", "report")
     g.add_edge("directions", "report")
     g.add_edge("report", END)
 

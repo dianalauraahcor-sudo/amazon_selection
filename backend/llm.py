@@ -22,7 +22,7 @@ def chat(prompt: str, max_tokens: int = 2000, temperature: float = 0.3,
     last_err = None
     for attempt in range(1, retries + 1):
         try:
-            with httpx.Client(timeout=180) as c:
+            with httpx.Client(timeout=90) as c:
                 r = c.post(
                     f"{base}/chat/completions",
                     headers={
@@ -43,7 +43,7 @@ def chat(prompt: str, max_tokens: int = 2000, temperature: float = 0.3,
             is_rate_limit = "429" in str(e)
             print(f"[Kimi LLM] attempt {attempt}/{retries} failed: {e}")
             if attempt < retries:
-                wait = 30 if is_rate_limit else 5
+                wait = 10 if is_rate_limit else 2
                 print(f"[Kimi LLM] waiting {wait}s before retry...")
                 time.sleep(wait)
 

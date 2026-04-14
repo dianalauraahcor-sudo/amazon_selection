@@ -57,7 +57,7 @@ def _llm_summarize(text_blob: str, keywords: list[str]) -> dict:
         f"以下是 {text_blob.count('---')+1} 条 1-4 星评论原文(用 --- 分隔)。\n"
         f"请系统分析这些差评，提炼高频痛点并给出整体总结。\n\n"
         f"# 输出格式\n{SCHEMA_HINT}\n\n{FEW_SHOT}\n\n"
-        f"# 评论原文\n{text_blob[:20000]}"
+        f"# 评论原文\n{text_blob[:12000]}"
     )
     raw = chat(user_msg, max_tokens=4000, temperature=0.2, system=SYSTEM)
     if not raw:
@@ -201,8 +201,8 @@ def bad_reviews_node(state: GraphState) -> GraphState:
         if key in seen:
             continue
         seen.add(key)
-        pieces.append(f"[{r.get('rating','?')}★] {body[:600]}")
-    blob = "\n---\n".join(pieces[:200])
+        pieces.append(f"[{r.get('rating','?')}★] {body[:300]}")
+    blob = "\n---\n".join(pieces[:120])
 
     # Enrich blob with structured review data from competitor analysis
     comp_analysis = state.get("competitor_analysis", {})

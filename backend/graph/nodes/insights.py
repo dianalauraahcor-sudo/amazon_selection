@@ -100,8 +100,7 @@ def insights_node(state: GraphState) -> dict:
         sections.append(f"# TOP差评痛点（{len(top10)}项）\n{json.dumps(pain_brief, ensure_ascii=False)}")
 
     if market_analysis:
-        # Send more market analysis text for richer insights
-        ma_text = "\n".join(str(t) for t in market_analysis[:50])[:5000]
+        ma_text = "\n".join(str(t) for t in market_analysis[:20])[:3000]
         sections.append(f"# Excel市场深度分析\n{ma_text}")
 
     if category_trends:
@@ -141,7 +140,7 @@ def insights_node(state: GraphState) -> dict:
         + f"\n\n# 输出格式\n{SCHEMA}"
     )
 
-    raw = _llm(user_msg, max_tokens=4000, temperature=0.3, system=SYSTEM) or ""
+    raw = _llm(user_msg, max_tokens=3000, temperature=0.3, system=SYSTEM) or ""
     raw = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.M)
 
     insights = {}
