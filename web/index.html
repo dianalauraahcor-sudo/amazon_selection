@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>选品分析 — 亚马逊智能选品</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --blue-900: #1A365D;
+    --blue-700: #2B6CB0;
+    --blue-500: #3182CE;
+    --blue-100: #EBF4FF;
+    --blue-50: #F0F7FF;
+    --gray-bg: #F5F6F8;
+    --gray-50: #F9FAFB;
+    --gray-100: #F3F4F6;
+    --gray-200: #E5E7EB;
+    --gray-300: #D1D5DB;
+    --gray-400: #9CA3AF;
+    --gray-500: #6B7280;
+    --gray-600: #4B5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --green: #38A169;
+    --orange: #DD6B20;
+    --red: #E53E3E;
+    --gold: #D69E2E;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    background: var(--gray-bg);
+    color: var(--gray-900);
+    font-family: "PingFang SC","Microsoft YaHei","Helvetica Neue","Segoe UI",sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  .card { background: #fff; border-radius: 8px; box-shadow: var(--shadow); }
+  .field {
+    width: 100%; border: 1px solid var(--gray-200); border-radius: 6px;
+    padding: 10px 12px; font-size: 14px; outline: none; transition: border .15s;
+    font-family: inherit; color: var(--gray-900);
+  }
+  .field:focus { border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(49,130,206,.12); }
+  .field::placeholder { color: var(--gray-400); }
+  textarea.field { resize: none; line-height: 1.6; }
+  /* range */
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: var(--gray-200); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--blue-700); cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--blue-700); cursor: pointer; border: none; }
+  /* btn */
+  .btn-primary {
+    background: var(--blue-700); color: #fff; border-radius: 8px; padding: 14px;
+    font-size: 15px; font-weight: 500; width: 100%; border: none; cursor: pointer;
+    transition: background .15s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:hover { background: var(--blue-900); }
+  .btn-primary:disabled { background: var(--gray-300); cursor: not-allowed; }
+  .btn-dl {
+    background: var(--blue-700); color: #fff; border-radius: 8px; padding: 12px 28px;
+    font-size: 14px; font-weight: 500; border: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+    transition: background .15s;
+  }
+  .btn-dl:hover { background: var(--blue-900); }
+  /* spinner */
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+  .spinner-sm { width: 14px; height: 14px; border-width: 2px; }
+  .spinner-blue { border-color: rgba(43,108,176,.2); border-top-color: var(--blue-700); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ticker */
+  .ticker-wrap { overflow: hidden; width: 100%; }
+  .ticker {
+    display: inline-flex; gap: 60px; white-space: nowrap;
+    animation: ticker 18s linear infinite;
+  }
+  @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+  /* pulse ring */
+  .pulse-ring { animation: pulseRing 1.5s ease-in-out infinite; }
+  @keyframes pulseRing { 0%,100% { box-shadow: 0 0 0 0 rgba(43,108,176,.3); } 50% { box-shadow: 0 0 0 8px rgba(43,108,176,0); } }
+  /* progress ring */
+  .ring-track { stroke: var(--gray-200); }
+  .ring-fill { stroke: var(--blue-700); stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  /* fade in */
+  .fade-in { animation: fadeIn .4s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* bounce in */
+  .bounce-in { animation: bounceIn .5s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes bounceIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+  /* tabs */
+  .tab { padding: 12px 4px; margin-right: 28px; font-size: 14px; color: var(--gray-500); border-bottom: 2px solid transparent; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; transition: all .15s; }
+  .tab:hover { color: var(--gray-700); }
+  .tab.active { color: var(--blue-700); border-bottom-color: var(--blue-700); font-weight: 500; }
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; font-weight: 500; color: var(--gray-500); font-size: 12px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--gray-100); color: var(--gray-700); }
+  tr:last-child td { border-bottom: none; }
+  /* medal cards */
+  .medal-gold { background: #FFFBEB; border: 1px solid #FDE68A; }
+  .medal-silver { background: #F9FAFB; border: 1px solid #E5E7EB; }
+  .medal-bronze { background: #FFF7ED; border: 1px solid #FED7AA; }
+  /* detail toggle */
+  details summary { list-style: none; cursor: pointer; }
+  details summary::-webkit-details-marker { display: none; }
+  details[open] .arrow-icon { transform: rotate(90deg); }
+  .arrow-icon { transition: transform .2s; display: inline-block; }
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ===== Header ===== -->
+<header class="bg-white border-b border-gray-200">
+  <div class="max-w-[900px] mx-auto px-6 h-14 flex items-center">
+    <div class="flex items-center gap-2.5">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="8" height="8" rx="2" fill="#2B6CB0"/>
+        <rect x="13" y="3" width="8" height="8" rx="2" fill="#2B6CB0" opacity=".5"/>
+        <rect x="3" y="13" width="8" height="8" rx="2" fill="#2B6CB0" opacity=".3"/>
+        <rect x="13" y="13" width="8" height="8" rx="2" fill="#2B6CB0" opacity=".7"/>
+      </svg>
+      <span class="text-[16px] font-semibold" style="color:var(--blue-900)">选品分析</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[900px] mx-auto px-6 py-10">
+
+  <!-- Title -->
+  <div class="mb-8">
+    <h1 class="text-[28px] font-medium" style="color:var(--gray-900)">亚马逊智能选品分析</h1>
+    <p class="text-[14px] mt-1" style="color:var(--gray-500)">上传选品数据，输入商品信息，自动生成选品评估报告</p>
+  </div>
+
+  <!-- ===== IDLE: Form ===== -->
+  <div id="state-idle">
+    <div class="card p-8">
+      <!-- Excel Upload -->
+      <div class="mb-6">
+        <label class="block text-[13px] font-medium mb-1.5" style="color:var(--gray-700)">选品数据 Excel <span style="color:var(--red)">*</span></label>
+        <div id="drop-zone" style="border:2px dashed var(--gray-300);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;"
+             ondragover="event.preventDefault();this.style.borderColor='var(--blue-500)';this.style.background='var(--blue-50)'"
+             ondragleave="this.style.borderColor='var(--gray-300)';this.style.background='transparent'"
+             ondrop="event.preventDefault();this.style.borderColor='var(--gray-300)';this.style.background='transparent';handleFiles(event.dataTransfer.files)"
+             onclick="document.getElementById('f-files').click()">
+          <input id="f-files" type="file" multiple accept=".xlsx" style="display:none" onclick="event.stopPropagation()" onchange="handleFiles(this.files)">
+          <div style="color:var(--gray-400);font-size:13px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="margin:0 auto 8px;display:block;"><path d="M12 16V4M12 4L8 8M12 4l4 4M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            点击或拖放上传 .xlsx 文件<br>
+            <span style="font-size:11px">支持多文件（产品数据 + 评论数据，系统自动识别）</span>
+          </div>
+        </div>
+        <div id="file-list" class="mt-2 space-y-1"></div>
+      </div>
+      <!-- Category -->
+      <div class="mb-5">
+        <label class="block text-[13px] font-medium mb-1.5" style="color:var(--gray-700)">商品类目 <span style="color:var(--gray-400)">(可选)</span></label>
+        <input id="f-cat" class="field" type="text" placeholder="例如：LED Work Light">
+      </div>
+      <!-- ASIN -->
+      <div class="mb-5">
+        <div class="flex justify-between items-center mb-1.5">
+          <label class="text-[13px] font-medium" style="color:var(--gray-700)">目标 ASIN <span style="color:var(--gray-400)">(可选)</span></label>
+          <span class="text-[12px] font-medium" style="color:var(--blue-700)">已输入 <span id="asin-n">0</span> 个</span>
+        </div>
+        <textarea id="f-asins" class="field" rows="5" placeholder="B0CYWSWZ71&#10;B0GJB7M62C&#10;B0B6BCSKBV&#10;&#10;支持换行、逗号、顿号分隔"></textarea>
+      </div>
+      <!-- Keywords -->
+      <div class="mb-5">
+        <div class="flex justify-between items-center mb-1.5">
+          <label class="text-[13px] font-medium" style="color:var(--gray-700)">核心关键词 <span style="color:var(--gray-400)">(选填)</span></label>
+          <span class="text-[12px] font-medium" style="color:var(--blue-700)">已输入 <span id="kw-n">0</span> 个</span>
+        </div>
+        <textarea id="f-kws" class="field" rows="3" placeholder="LED work light&#10;portable light&#10;Camping Light"></textarea>
+      </div>
+      <!-- Hidden: sliders removed, values hardcoded since Excel has profit data -->
+      <input id="f-margin" type="hidden" value="30">
+      <input id="f-fee" type="hidden" value="30">
+      <!-- Submit -->
+      <button id="btn-go" class="btn-primary">
+        <span id="btn-text">开始分析</span>
+      </button>
+      <p class="text-center text-[12px] mt-3" style="color:var(--gray-400)">系统将从 Excel 中查找数据并生成选品报告</p>
+    </div>
+  </div>
+
+  <!-- ===== RUNNING ===== -->
+  <div id="state-run" class="hidden">
+    <!-- Ticker bar -->
+    <div class="rounded-lg overflow-hidden mb-6" style="background:var(--blue-900);height:42px;display:flex;align-items:center;padding:0 16px;">
+      <span class="spinner spinner-sm" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;flex-shrink:0;"></span>
+      <div class="ticker-wrap ml-3">
+        <div class="ticker text-[13px] text-white font-medium">
+          <span id="ticker-a"></span>
+          <span id="ticker-b"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-8">
+      <!-- Step bar -->
+      <div class="flex items-start justify-between mb-10 px-2" id="step-bar"></div>
+
+      <!-- Progress ring -->
+      <div class="flex flex-col items-center mb-8">
+        <div class="relative">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="66" fill="none" stroke-width="5" class="ring-track"/>
+            <circle cx="80" cy="80" r="66" fill="none" stroke-width="5" class="ring-fill"
+                    id="ring" stroke-dasharray="415" stroke-dashoffset="415" transform="rotate(-90 80 80)"/>
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span id="ring-pct" class="text-[36px] font-semibold" style="color:var(--blue-900)">0</span>
+            <span class="text-[12px]" style="color:var(--gray-400)">%</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 mt-5">
+          <span class="spinner spinner-sm spinner-blue"></span>
+          <span id="step-label" class="text-[15px] font-medium" style="color:var(--gray-700)">正在准备...</span>
+        </div>
+        <p id="eta" class="text-[13px] mt-2" style="color:var(--gray-400)">预计还需约 15 分钟</p>
+      </div>
+
+      <p class="text-center text-[13px]" style="color:var(--gray-400);line-height:1.7">
+        分析正在进行中，请耐心等待。<br>您可以离开此页面，分析将在后台继续运行。
+      </p>
+    </div>
+    <!-- Error -->
+    <div id="run-err" class="hidden card p-6 mt-4" style="border:1px solid #FEB2B2;">
+      <p class="text-[14px] mb-3" style="color:var(--red)" id="err-msg"></p>
+      <button onclick="location.reload()" class="text-[13px] font-medium px-4 py-2 rounded-md" style="background:#FFF5F5;color:var(--red);border:1px solid #FEB2B2;">重新分析</button>
+    </div>
+  </div>
+
+  <!-- ===== DONE ===== -->
+  <div id="state-done" class="hidden">
+    <!-- Header -->
+    <div class="card p-6 mb-4 flex items-center justify-between flex-wrap gap-4 bounce-in">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:#F0FFF4">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10.5L8.5 15L16 6" stroke="#38A169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="text-[18px] font-semibold" style="color:var(--gray-900)">分析完成</div>
+          <div class="text-[13px]" style="color:var(--gray-500)">选品评估报告已生成</div>
+        </div>
+      </div>
+      <a id="dl-link" href="#" download class="btn-dl">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10M8 11L5 8M8 11l3-3M2 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        下载选品报告
+      </a>
+    </div>
+    <!-- Tabs -->
+    <div class="card overflow-hidden">
+      <nav class="px-6 border-b flex overflow-x-auto" style="border-color:var(--gray-200)">
+        <button data-tab="market" class="tab">市场规模</button>
+        <button data-tab="comp" class="tab">竞争指数</button>
+        <button data-tab="price" class="tab">入场价格</button>
+        <button data-tab="bad" class="tab">差评分析</button>
+        <button data-tab="dir" class="tab">选品方向</button>
+      </nav>
+      <div class="p-6">
+        <div id="p-market" class="pane fade-in"></div>
+        <div id="p-comp" class="pane hidden"></div>
+        <div id="p-price" class="pane hidden"></div>
+        <div id="p-bad" class="pane hidden"></div>
+        <div id="p-dir" class="pane hidden"></div>
+      </div>
+      <!-- Conclusion -->
+      <div class="px-6 pb-6 pt-4 border-t" style="border-color:var(--gray-100)">
+        <h3 class="text-[17px] font-semibold mb-4" style="color:var(--gray-900)">综合结论与行动优先级</h3>
+        <div id="conclusion" class="grid md:grid-cols-3 gap-4"></div>
+      </div>
+    </div>
+    <!-- Re-run -->
+    <div class="text-center mt-6">
+      <button onclick="location.reload()" class="text-[13px] font-medium px-5 py-2.5 rounded-md" style="background:#fff;color:var(--blue-700);border:1px solid var(--gray-200);">重新分析</button>
+    </div>
+  </div>
+
+</main>
+
+<footer class="py-8 text-center text-[12px]" style="color:var(--gray-400)">© 2026 选品分析系统</footer>
+
+<script>
+const API="";
+const NODES=[
+  {key:"parse_excel",label:"解析数据",ticker:"正在解析上传的 Excel 数据…"},
+  {key:"crawl",label:"数据检索",ticker:"正在从 Excel 中检索目标产品与关键词数据…"},
+  {key:"market",label:"市场分析",ticker:"正在分析市场规模与价格分布…"},
+  {key:"competition",label:"竞争评估",ticker:"正在计算竞争指数与月销估算…"},
+  {key:"pricing",label:"价格测算",ticker:"正在测算最佳入场价格与利润空间…"},
+  {key:"bad_reviews",label:"差评挖掘",ticker:"正在深度挖掘用户差评痛点…"},
+  {key:"insights",label:"战略洞察",ticker:"正在生成市场洞察与策略建议…"},
+  {key:"directions",label:"方向规划",ticker:"正在生成差异化选品方向…"},
+  {key:"report",label:"生成报告",ticker:"正在排版生成选品报告…"},
+];
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const esc=v=>v==null?"—":String(v).replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+const parseList=t=>(t||"").split(/[\n,，、;；]+/).map(s=>s.trim()).filter(Boolean);
+
+// counters
+$("#f-asins").addEventListener("input",e=>$("#asin-n").textContent=parseList(e.target.value).length);
+$("#f-kws").addEventListener("input",e=>$("#kw-n").textContent=parseList(e.target.value).length);
+$("#f-margin").addEventListener("input",e=>$("#margin-v").textContent=e.target.value);
+$("#f-fee").addEventListener("input",e=>$("#fee-v").textContent=e.target.value);
+
+// build step bar
+function buildSteps(){
+  $("#step-bar").innerHTML=NODES.map((n,i)=>`
+    <div class="flex flex-col items-center flex-1 relative" id="step-${i}">
+      ${i>0?`<div class="absolute top-[13px] right-[50%] left-[-50%] h-[2px] step-line" style="background:var(--gray-200);z-index:0;"></div>`:""}
+      <div class="step-dot w-[26px] h-[26px] rounded-full flex items-center justify-center relative z-10 text-[11px]" style="background:var(--gray-200);color:var(--gray-400);">
+        ${i+1}
+      </div>
+      <span class="text-[11px] mt-2 text-center leading-tight" style="color:var(--gray-400)">${n.label}</span>
+    </div>
+  `).join("");
+}
+buildSteps();
+
+function updateSteps(curKey,done){
+  let ci=NODES.findIndex(n=>n.key===curKey);
+  if(ci<0)ci=done?NODES.length:0;
+  NODES.forEach((n,i)=>{
+    const el=$(`#step-${i}`);
+    const dot=el.querySelector(".step-dot");
+    const line=el.querySelector(".step-line");
+    const label=el.querySelector("span");
+    if(i<ci||done){
+      dot.style.background="var(--blue-700)";dot.style.color="#fff";
+      dot.style.border="none";
+      dot.classList.remove("pulse-ring");
+      dot.innerHTML='<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6.5L5 9L10 3" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>';
+      label.style.color="var(--blue-700)";label.style.fontWeight="";
+      if(line)line.style.background="var(--blue-700)";
+    } else if(i===ci){
+      dot.style.background="#fff";dot.style.color="var(--blue-700)";
+      dot.style.border="2px solid var(--blue-700)";
+      dot.classList.add("pulse-ring");
+      dot.innerHTML='<span class="spinner spinner-sm spinner-blue"></span>';
+      label.style.color="var(--blue-700)";label.style.fontWeight="600";
+      if(line)line.style.background="linear-gradient(90deg,var(--blue-700),var(--gray-200))";
+    } else {
+      dot.style.background="var(--gray-200)";dot.style.color="var(--gray-400)";
+      dot.style.border="none";
+      dot.classList.remove("pulse-ring");
+      dot.innerHTML=`${i+1}`;
+      label.style.color="var(--gray-400)";label.style.fontWeight="";
+      if(line)line.style.background="var(--gray-200)";
+    }
+  });
+}
+
+function setTicker(text){
+  const t=text+"　　　　"+text+"　　　　"+text+"　　　　"+text;
+  $("#ticker-a").textContent=t;
+  $("#ticker-b").textContent=t;
+}
+
+function setRing(pct){
+  pct=Math.max(0,Math.min(100,pct));
+  const C=2*Math.PI*66;
+  $("#ring").setAttribute("stroke-dasharray",C);
+  $("#ring").setAttribute("stroke-dashoffset",C*(1-pct/100));
+  $("#ring-pct").textContent=Math.round(pct);
+}
+
+function showState(name){
+  ["idle","run","done"].forEach(k=>$(`#state-${k}`).classList.toggle("hidden",k!==name));
+}
+
+// file upload handling
+let uploadedFiles=[];
+function handleFiles(fileList){
+  for(const f of fileList){
+    if(!f.name.endsWith(".xlsx"))continue;
+    if(uploadedFiles.some(x=>x.name===f.name&&x.size===f.size))continue;
+    uploadedFiles.push(f);
+  }
+  renderFileList();
+}
+function removeFile(idx){
+  uploadedFiles.splice(idx,1);
+  renderFileList();
+}
+function renderFileList(){
+  const el=$("#file-list");
+  if(!uploadedFiles.length){el.innerHTML="";return;}
+  el.innerHTML=uploadedFiles.map((f,i)=>`
+    <div class="flex items-center gap-2 px-3 py-1.5 rounded-md" style="background:var(--blue-50);font-size:12px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="#2B6CB0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="flex-1 truncate" style="color:var(--blue-700)">${esc(f.name)}</span>
+      <span style="color:var(--gray-400)">${(f.size/1024).toFixed(0)} KB</span>
+      <button onclick="removeFile(${i})" style="color:var(--gray-400);cursor:pointer;background:none;border:none;font-size:14px;line-height:1">&times;</button>
+    </div>`).join("");
+}
+
+// submit
+let polling;
+$("#btn-go").addEventListener("click",async()=>{
+  const payload={
+    category:$("#f-cat").value.trim(),
+    asins:parseList($("#f-asins").value),
+    keywords:parseList($("#f-kws").value),
+    target_margin:parseInt($("#f-margin").value)/100,
+    fee_rate:parseInt($("#f-fee").value)/100,
+  };
+  if(!uploadedFiles.length){alert("请先上传选品数据 Excel 文件");return;}
+  // ASIN is optional — report is driven by uploaded Excel data
+  $("#btn-go").disabled=true;
+  $("#btn-text").innerHTML='<span class="spinner"></span> 上传文件中…';
+  try{
+    // Step 1: upload files
+    const fd=new FormData();
+    uploadedFiles.forEach(f=>fd.append("files",f));
+    const upResp=await fetch(API+"/upload",{method:"POST",body:fd});
+    if(!upResp.ok){const e=await upResp.json();throw new Error(e.detail||"文件上传失败");}
+    const{filenames}=await upResp.json();
+
+    // Step 2: start analysis
+    $("#btn-text").innerHTML='<span class="spinner"></span> 提交分析…';
+    payload.excel_filenames=filenames;
+    const r=await fetch(API+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(!r.ok){const e=await r.json();throw new Error(e.detail||"提交失败");}
+    const{job_id}=await r.json();
+    showState("run");
+    setRing(2);
+    setTicker(NODES[0].ticker);
+    updateSteps("crawl",false);
+    $("#step-label").textContent=NODES[0].ticker;
+    poll(job_id);
+  }catch(e){
+    alert(e.message);
+    $("#btn-go").disabled=false;
+    $("#btn-text").textContent="开始分析";
+  }
+});
+
+async function poll(jid){
+  if(polling)clearInterval(polling);
+  const startTime=Date.now();
+  polling=setInterval(async()=>{
+    try{
+      const s=await(await fetch(`${API}/status/${jid}`)).json();
+      const cur=s.current_node||"crawl";
+      const pct=s.progress||0;
+      setRing(pct);
+      const node=NODES.find(n=>n.key===cur);
+      if(node){
+        setTicker(node.ticker);
+        $("#step-label").textContent=node.ticker;
+      }
+      updateSteps(cur,s.status==="done");
+      const mins=Math.max(1,Math.ceil((100-pct)/100*15));
+      $("#eta").textContent=`预计还需约 ${mins} 分钟`;
+      if(s.status==="done"){
+        clearInterval(polling);
+        const data=await(await fetch(`${API}/result/${jid}`)).json();
+        render(data,jid);
+        showState("done");
+      }else if(s.status==="error"){
+        clearInterval(polling);
+        $("#run-err").classList.remove("hidden");
+        $("#err-msg").textContent="分析出错："+(s.error||"未知错误");
+      }
+    }catch(e){console.warn(e);}
+  },2000);
+}
+
+// tabs
+function switchTab(name){
+  $$(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
+  ["market","comp","price","bad","dir"].forEach(k=>{
+    const el=$("#p-"+k);
+    el.classList.toggle("hidden",k!==name);
+    if(k===name){el.classList.remove("fade-in");void el.offsetWidth;el.classList.add("fade-in");}
+  });
+}
+$$(".tab").forEach(t=>t.addEventListener("click",()=>switchTab(t.dataset.tab)));
+
+function render(d,jid){
+  // market
+  const m=d.market||{};const kws=Object.keys(m);
+  $("#p-market").innerHTML=`<div class="grid md:grid-cols-3 gap-4">${kws.map(k=>{const x=m[k];return`
+    <div class="rounded-lg border p-5" style="border-color:var(--gray-200)">
+      <div class="text-[12px] mb-1" style="color:var(--gray-400)">关键词</div>
+      <div class="text-[16px] font-semibold mb-3">${esc(k)}</div>
+      <div class="space-y-2 text-[13px]">
+        <div class="flex justify-between"><span style="color:var(--gray-500)">价格中位</span><span class="font-medium" style="color:var(--blue-700)">$${esc(x.price_median)}</span></div>
+        <div class="flex justify-between"><span style="color:var(--gray-500)">价格区间</span><span>$${esc(x.price_min)} – $${esc(x.price_max)}</span></div>
+        <div class="flex justify-between"><span style="color:var(--gray-500)">销量带</span><span>${esc(x.sales_band)}</span></div>
+        <div class="flex justify-between"><span style="color:var(--gray-500)">趋势</span><span>${esc(x.trend)}</span></div>
+        <div class="flex justify-between"><span style="color:var(--gray-500)">热度评级</span><span>${esc(x.rating)}</span></div>
+        <div class="flex justify-between"><span style="color:var(--gray-500)">搜索结果数</span><span>${esc(x.result_count)}</span></div>
+      </div>
+    </div>`;}).join("")}</div>`;
+
+  // competition
+  const c=d.competition||{rows:[],heat:{}};
+  $("#p-comp").innerHTML=`
+    <div class="rounded-lg border overflow-hidden mb-5" style="border-color:var(--gray-200)">
+      <table><thead><tr><th>ASIN</th><th>标题</th><th>品牌</th><th>价格</th><th>评分</th><th>评论数</th><th>月销</th><th>竞争力</th></tr></thead>
+      <tbody>${(c.rows||[]).map(r=>`<tr>
+        <td class="font-medium">${esc(r.asin)}</td><td>${esc((r.title||"").slice(0,36))}</td><td>${esc(r.brand)}</td>
+        <td>$${esc(r.price)}</td><td>${esc(r.rating)}</td><td>${esc(r.reviews_total)}</td>
+        <td>${esc(r.est_monthly_sales)}</td><td>${esc(r.competitiveness)}</td>
+      </tr>`).join("")}</tbody></table>
+    </div>
+    <div class="text-[13px] font-medium mb-2" style="color:var(--gray-700)">关键词竞争热度</div>
+    <div class="grid md:grid-cols-3 gap-3">${Object.entries(c.heat||{}).map(([k,h])=>`
+      <div class="rounded-lg border p-4" style="border-color:var(--gray-200)">
+        <div class="font-medium mb-2">${esc(k)}</div>
+        <div class="space-y-1 text-[12px]">
+          <div class="flex justify-between"><span style="color:var(--gray-500)">热度</span><span>${esc(h["热度"])}</span></div>
+          <div class="flex justify-between"><span style="color:var(--gray-500)">价格区间</span><span>${esc(h["价格区间"])}</span></div>
+          <div class="flex justify-between"><span style="color:var(--gray-500)">竞争激烈度</span><span>${esc(h["竞争激烈度"])}</span></div>
+        </div>
+      </div>`).join("")}</div>`;
+
+  // pricing
+  const p=d.pricing||{};
+  $("#p-price").innerHTML=`<div class="rounded-lg border overflow-hidden" style="border-color:var(--gray-200)">
+    <table><thead><tr><th>关键词</th><th>市场中位价</th><th>建议入场价</th><th>价格区间</th><th>成本上限</th><th>单件毛利</th></tr></thead>
+    <tbody>${Object.entries(p).map(([k,x])=>`<tr>
+      <td>${esc(k)}</td><td>$${esc(x.median_price)}</td>
+      <td class="font-semibold" style="color:var(--blue-700)">$${esc(x.entry_price)}</td>
+      <td>${esc(x.entry_range)}</td><td>$${esc(x.target_cost_max)}</td>
+      <td class="font-medium" style="color:var(--green)">$${esc(x.expected_gross_per_unit)}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+
+  // bad reviews
+  const br=d.bad_reviews||{top10:[],by_keyword:{}};
+  $("#p-bad").innerHTML=`
+    <p class="text-[13px] mb-4" style="color:var(--gray-500)">共分析 ${esc(br.total_critical||0)} 条差评，提炼以下高频痛点</p>
+    <div class="space-y-2 mb-6">${(br.top10||[]).map((it,i)=>`
+      <details class="rounded-lg border" style="border-color:var(--gray-200)">
+        <summary class="px-4 py-3 flex items-center gap-3">
+          <span class="text-[15px] font-semibold w-7" style="color:var(--blue-700)">${String(it.rank||i+1).padStart(2,"0")}</span>
+          <span class="flex-1 text-[14px]">${esc(it.issue)}</span>
+          <span class="text-[12px] px-2 py-0.5 rounded" style="background:var(--gray-100);color:var(--gray-500)">×${esc(it.frequency)}</span>
+          <span class="text-[12px] px-2 py-0.5 rounded" style="background:var(--blue-50);color:var(--blue-700)">${esc(it.dimension)}</span>
+          ${it.severity==="高"?`<span class="text-[12px] px-2 py-0.5 rounded" style="background:#FFF5F5;color:var(--red)">高</span>`:""}
+          <span class="arrow-icon" style="color:var(--gray-400)">›</span>
+        </summary>
+        <div class="px-4 pb-4 pt-2 text-[13px] border-t space-y-1.5" style="border-color:var(--gray-100);color:var(--gray-600)">
+          ${it.typical_quote?`<div style="color:var(--gray-400)">「${esc(it.typical_quote)}」</div>`:""}
+          ${it.root_cause?`<div><b style="color:var(--gray-500)">根因：</b>${esc(it.root_cause)}</div>`:""}
+          ${it.suggestion?`<div><b style="color:var(--gray-500)">建议：</b>${esc(it.suggestion)}</div>`:""}
+        </div>
+      </details>`).join("")}</div>
+    ${Object.keys(br.by_keyword||{}).length?`
+      <div class="text-[13px] font-medium mb-2" style="color:var(--gray-700)">按关键词差评摘录</div>
+      ${Object.entries(br.by_keyword).map(([k,arr])=>`
+        <div class="mb-4"><div class="font-medium text-[14px] mb-1.5">${esc(k)}</div>
+        <ul class="space-y-1 text-[12px]" style="color:var(--gray-600)">${(arr||[]).map(s=>`<li class="pl-3" style="border-left:2px solid var(--gray-200)">${esc(s)}</li>`).join("")||`<li style="color:var(--gray-400)">暂无样本</li>`}</ul></div>`).join("")}`:""}`;
+
+  // directions
+  const items=(d.directions||{}).items||[];
+  const mIcon=p=>({gold:"🥇",silver:"🥈",bronze:"🥉"}[p]||"●");
+  const mCls=p=>({gold:"medal-gold",silver:"medal-silver",bronze:"medal-bronze"}[p]||"");
+  $("#p-dir").innerHTML=`<div class="space-y-4">${items.map(it=>`
+    <div class="rounded-lg p-5 ${mCls(it.priority)}">
+      <div class="flex justify-between items-start gap-4 mb-3">
+        <div class="flex gap-3 items-start">
+          <span class="text-[24px]">${mIcon(it.priority)}</span>
+          <div><div class="text-[16px] font-semibold">${esc(it.name)}</div>
+          ${it.target_user?`<div class="text-[12px] mt-0.5" style="color:var(--gray-500)">目标人群：${esc(it.target_user)}</div>`:""}</div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-[20px] font-semibold" style="color:var(--blue-700)">$${esc(it.target_price)}</div>
+          <div class="text-[11px]" style="color:var(--gray-400)">${esc(it.monthly_sales_target)} / 月</div>
+        </div>
+      </div>
+      <p class="text-[13px] mb-3" style="color:var(--gray-600)">${esc(it.positioning)}</p>
+      ${it.evidence&&it.evidence.length?`<div class="text-[12px] font-medium mb-1" style="color:var(--gray-500)">数据依据</div>
+        <ul class="mb-3 space-y-1 text-[12px]" style="color:var(--gray-600)">${it.evidence.map(e=>`<li class="pl-3" style="border-left:2px solid var(--gray-200)">${esc(e)}</li>`).join("")}</ul>`:""}
+      <div class="text-[12px] font-medium mb-1" style="color:var(--gray-500)">改良点</div>
+      <ul class="grid md:grid-cols-2 gap-x-4 gap-y-1 text-[12px] mb-3" style="color:var(--gray-600)">${(it.improvements||[]).map(x=>`<li class="flex gap-1.5"><span style="color:var(--blue-700)">›</span>${esc(x)}</li>`).join("")}</ul>
+      ${it.risks&&it.risks.length?`<div class="text-[12px] font-medium mb-1" style="color:var(--gray-500)">风险提示</div>
+        <ul class="space-y-1 text-[12px]" style="color:var(--gray-600)">${it.risks.map(r=>`<li class="flex gap-1.5"><span style="color:var(--orange)">⚠</span>${esc(r)}</li>`).join("")}</ul>`:""}</div>`).join("")}</div>`;
+
+  // conclusion
+  $("#conclusion").innerHTML=(d.conclusion||[]).map((c,i)=>`
+    <div class="rounded-lg p-5 ${i===0?"medal-gold":i===1?"medal-silver":"medal-bronze"}">
+      <div class="text-[24px] mb-2">${esc(c.medal)}</div>
+      <div class="text-[15px] font-semibold mb-2">${esc(c.direction)}</div>
+      <div class="text-[12px] mb-3" style="color:var(--gray-600)">${esc(c.reason)}</div>
+      <div class="flex justify-between text-[12px] pt-3 border-t" style="border-color:var(--gray-200)">
+        <span style="color:var(--gray-500)">目标价</span><span class="font-medium">${esc(c.target_price)}</span>
+      </div>
+      <div class="text-[11px] mt-1.5" style="color:var(--gray-400)">${esc(c.next_step)}</div>
+    </div>`).join("");
+
+  $("#dl-link").href=`${API}/report/${jid}`;
+  switchTab("market");
+}
+</script>
+</body>
+</html>

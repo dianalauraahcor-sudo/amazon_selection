@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+uploads/
+backend/report/output/
+uvicorn.log
+bad_reviews_debug.log
+.idea/
+.claude/
+*.tmp
+~$*
